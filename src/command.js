@@ -1,5 +1,22 @@
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
+import {
+  removeNote,
+  removeAllNotes,
+  findNote,
+  getNotes,
+  newNote,
+} from "./notes.js";
+import { start } from "./server.js";
+
+const listNotes = (notes) => {
+  notes.forEach(({ id, content, tags }) => {
+    console.log(`ID: ${id}`);
+    console.log(`Tags: ${tags.join(", ")}`);
+    console.log(`Content: ${content}`);
+    console.log("------");
+  });
+};
 
 yargs(hideBin(process.argv))
   .command(
@@ -11,8 +28,10 @@ yargs(hideBin(process.argv))
         describe: "The content of the note to be created",
       });
     },
-    (argv) => {
-      console.log(argv.note);
+    async (argv) => {
+      const tags = argv.tags ? argv.tags.split(",") : [];
+      const note = await newNote(argv.note, tags);
+      console.log("New note! ", note);
     }
   )
   .option("tags", {
@@ -24,7 +43,10 @@ yargs(hideBin(process.argv))
     "all",
     "get all notes",
     () => {},
-    async (argv) => {}
+    async (argv) => {
+      const notes = await getNotes();
+      listNotes(notes);
+    }
   )
   .command(
     "find <filter>",
@@ -36,7 +58,10 @@ yargs(hideBin(process.argv))
         type: "string",
       });
     },
-    async (argv) => {}
+    async (argv) => {
+      const matches = await findNote(argv.filter);
+      listNotes(matches);
+    }
   )
   .command(
     "remove <id>",
@@ -47,7 +72,10 @@ yargs(hideBin(process.argv))
         description: "The id of the note you want to remove",
       });
     },
-    async (argv) => {}
+    async (argv) => {
+      const id = await removeNote(argv.id);
+      console.log("Deleted note with id: ", id);
+    }
   )
   .command(
     "web [port]",
@@ -59,13 +87,19 @@ yargs(hideBin(process.argv))
         type: "number",
       });
     },
-    async (argv) => {}
+    async (argv) => {
+      const notes = await getNotes();
+      start(notes, argv.port);
+    }
   )
   .command(
     "clean",
     "remove all notes",
     () => {},
-    async (argv) => {}
+    async (argv) => {
+      await removeAllNotes();
+      console.log("All notes removed");
+    }
   )
   .demandCommand(1)
   .parse();
